@@ -1,0 +1,7 @@
+{
+	"path": "",
+	"alias": null,
+	"nginx_port": 80,
+	"nginx_https": false,
+	"nginx_hostname": null
+}

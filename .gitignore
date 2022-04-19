@@ -1,0 +1,12 @@
+.vscode
+
+node_modules
+package-lock.json
+
+tsconfig.json
+*.bat
+*.sh
+
+out/
+build/
+dist/

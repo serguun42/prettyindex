@@ -1,0 +1,9 @@
+{
+	"verbose": false,
+	"env": {
+		"NODE_ENV": "development"
+	},
+	"ignore": [".git", "node_modules"],
+	"watch": ["prettyindex.js", "util/", "public/", "config/"],
+	"ext": "js, json, css, html"
+}

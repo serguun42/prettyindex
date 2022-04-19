@@ -1,0 +1,12 @@
+{
+	"root_folders": [
+		{ "path": "/home/user/shared/", "alias": "Shared", "nginx_port": 8080 },
+		{ "path": "/movies/", "alias": "Movies", "nginx_port": 8081 }
+	],
+	"port": 443,
+	"host": "localhost",
+	"https": {
+		"cert": "/home/user/keys/cert.pem",
+		"key": "/home/user/keys/key.pem"
+	}
+}
