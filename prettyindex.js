@@ -10,8 +10,6 @@ import { readdir, stat } from "node:fs/promises";
 const gzipPromise = promisify(gzip);
 
 
-/** @type {Partial<import("./types/prettyindexconfig").PrettyIndexConfig>} */
-const CONFIG_DEFAULT = JSON.parse(readFileSync("./config/defaults/prettyindex.json").toString());
 /** @type {Partial<import("./types/prettyindexconfig").RootFolder>} */
 const ROOT_FOLDER_DEFAULT = JSON.parse(readFileSync("./config/defaults/rootfolder.json").toString());
 /** @type {import("./types/prettyindexconfig").RootFolder} */
@@ -20,8 +18,15 @@ const ROOT_FOLDER_WITH_CHOICE = {
 	alias: "Choose root",
 	nginx_port: 80
 };
+
+/** @type {Partial<import("./types/prettyindexconfig").ZipServer>} */
+const ZIP_SERVER_DEFAULT = JSON.parse(readFileSync("./config/defaults/zipserver.json").toString());
+
+/** @type {Partial<import("./types/prettyindexconfig").PrettyIndexConfig>} */
+const CONFIG_DEFAULT = JSON.parse(readFileSync("./config/defaults/prettyindex.json").toString());
 /** @type {import("./types/prettyindexconfig").PrettyIndexConfig} */
 const CONFIG_USER = JSON.parse(readFileSync("./config/prettyindex.json").toString());
+
 /** @type {import("./types/prettyindexconfig").PrettyIndexConfig} */
 const config = { ...CONFIG_DEFAULT, ...CONFIG_USER };
 
@@ -33,13 +38,21 @@ if (!config.host) throw new Error("Define param <host>");
 if (!config.root_folders?.length) throw new Error("Param <root_folders> must contain something");
 config.root_folders = config.root_folders.map((folder) => ({ ...ROOT_FOLDER_DEFAULT, ...folder }));
 
-
 if (config.https) {
-	if (typeof config.https.cert !== "string") throw new Error("Param <https.cert> must be string. You can skip https");
-	if (typeof config.https.key !== "string") throw new Error("Param <https.key> must be string. You can skip https");
+	if (typeof config.https.cert !== "string")
+		throw new Error("Param <https.cert> must be string. You can skip <https>");
+	if (typeof config.https.key !== "string")
+		throw new Error("Param <https.key> must be string. You can skip <https>");
 
 	config.https.cert = readFileSync(config.https.cert);
 	config.https.key = readFileSync(config.https.key);
+}
+
+if (config.zip_server) {
+	if (typeof config.zip_server.port !== "number")
+		throw new Error("Param <zip_server.port> must be number. You can skip <zip_server>");
+
+	config.zip_server = { ...ZIP_SERVER_DEFAULT, ...config.zip_server };
 }
 
 
@@ -102,6 +115,19 @@ const LinkForFile = (rootFolder, pathParts) => new URL(`http${rootFolder.nginx_h
 }:${rootFolder.nginx_port}/${pathParts.join("/")}`).href;
 
 /**
+ * @param {import("./types/prettyindexconfig").RootFolder} rootFolder
+ * @param {string[]} pathParts
+ * @returns {string}
+ */
+const LinkForZip = (rootFolder, pathParts) => {
+	if (!config.zip_server) return "";
+
+	return new URL(`http${config.zip_server?.https ? "s" : ""}://${
+		config.zip_server?.hostname
+	}:${config.zip_server?.port}/?path=${join(rootFolder.path, ...pathParts)}`).href;
+};
+
+/**
  * @param {number} bytes
  * @returns {string}
  */
@@ -109,7 +135,7 @@ const HumanReadableSize = (bytes) => {
 	if (!bytes) return "";
 
 	const power = Math.floor(Math.log(bytes) / Math.log(1024));
-	return `${(bytes / Math.pow(1024, power)).toFixed(2)} ${["B", "kB", "MB", "GB", "TB"][power]}`;
+	return `${(bytes / Math.pow(1024, power)).toFixed(power ? 2 : 0)} ${["B", "kB", "MB", "GB", "TB"][power]}`;
 };
 
 /**
@@ -157,12 +183,14 @@ async function BuildPage(rootFolder, pathParts) {
 								encodeURIComponent(rootFolder.alias || rootFolder.path)
 							}/${[...pathParts, filename].join("/")}` :
 							LinkForFile(rootFolder, [...pathParts, filename])),
+					zip: LinkForZip(rootFolder, [...pathParts, filename]),
 					size: HumanReadableSize(fileStats.size || 0),
 					isDirectory: fileStats.isDirectory(),
 				}))
 				.catch(() => Promise.resolve({
 					filename,
 					link: LinkForFile(rootFolder, [...pathParts, filename]),
+					zip: LinkForZip(rootFolder, [...pathParts, filename]),
 					size: "",
 					isDirectory: false,
 				}))
@@ -181,7 +209,9 @@ async function BuildPage(rootFolder, pathParts) {
 				})
 				.map((fileStats) =>
 					`<a
-						class="entry entry--${fileStats.isDirectory ? "directory" : "file"}"
+						class="entry entry--${
+							fileStats.isDirectory ? "directory" : "file"
+						} ${fileStats.isDirectory && config.zip_server ? "entry--with-extra-link" : ""}"
 						href="${fileStats.link}"
 					>
 						<div class="entry__icon icon icon-${
@@ -189,7 +219,17 @@ async function BuildPage(rootFolder, pathParts) {
 						}"></div>
 						<div class="entry__name">${fileStats.filename}</div>
 						<div class="entry__size">${fileStats.size}</div>
-					</a>`
+					</a>
+					${fileStats.isDirectory && config.zip_server ?
+					`<a
+						class="entry-extra-link entry--directory"
+						href="${fileStats.zip}"
+						download="${fileStats.filename}"
+						title="${fileStats.filename}"
+					>
+						<div class="entry-extra-link__icon icon icon-zip"></div>
+						<div class="entry-extra-link__text">Zip</div>
+					</a>` : ""}`
 				), fileOrDirectoryPath
 			));
 
@@ -212,12 +252,22 @@ async function ServerHandle(req, res) {
 		config.root_folders.find((folder) => folder.alias === pathParts[0])
 	);
 
-	if (rootFolder && !rootFolder?.nginx_hostname) {
-		if (req.headers["origin"])
-			rootFolder.nginx_hostname = SafeParseURL(req.headers["origin"]).hostname;
-		if (req.headers["host"])
-			rootFolder.nginx_hostname = req.headers["host"];
-	}
+
+	/** @type {string} */
+	const requestedHostname = (
+		req.headers["origin"] ? 
+		SafeParseURL(req.headers["origin"]).hostname :
+		req.headers["host"] ?
+		req.headers["host"] :
+		""
+	);
+
+	if (rootFolder && !rootFolder?.nginx_hostname && requestedHostname)
+		rootFolder.nginx_hostname = requestedHostname;
+
+	if (config.zip_server && !config.zip_server.hostname)
+		config.zip_server.hostname = requestedHostname;
+
 
 	const builtPage = await BuildPage(rootFolder, pathParts.slice(1))
 	.catch((e) => {

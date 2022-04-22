@@ -1,12 +1,12 @@
 {
   "name": "prettyindex",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Pretty Autoindex – standalone Node.js addition to refine autoindex pages in nginx.",
   "main": "prettyindex.js",
   "module": "prettyindex.js",
   "type": "module",
   "scripts": {
-    "production": "pm2 start prettyindex.js",
+    "production": "pm2 start config/pm2.production.json",
     "stop": "pm2 delete prettyindex",
     "dev": "nodemon prettyindex.js --config config/nodemon.dev.json"
   },

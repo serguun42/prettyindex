@@ -1,3 +1,4 @@
+/** Root folder with its path and nginx server (target). */
 export type RootFolder = {
 	/**
 	 * Absolute path to root folder.
@@ -10,11 +11,11 @@ export type RootFolder = {
 	 */
 	alias?: string;
 	/**
-	 * Port on which nginx server with same root folder.
+	 * Port which nginx server (with same root folder) is listening to.
 	 */
 	nginx_port: number;
 	/**
-	 * Use https to connect to nginx server with same root folder.
+	 * Use https to connect to nginx server (with same root folder).
 	 * @default false
 	 */
 	nginx_https?: boolean;
@@ -25,6 +26,7 @@ export type RootFolder = {
 	nginx_hostname?: string;
 };
 
+/** Use https serving instead of http. If not set, http applies. */
 export type HTTPSOptions = {
 	/** Path to certificate file */
 	cert: string;
@@ -32,7 +34,30 @@ export type HTTPSOptions = {
 	key: string;
 };
 
+/**
+ * Standalone server just for downloading folders as ZIP.
+ * Adds option in the files list next to each folder to download it as ZIP.
+ * @see https://github.com/serguun42/zip-downloader
+ */
+export type ZipServer = {
+	/**
+	 * Port which zip downloader server is listening to.
+	 */
+	port: number;
+	/**
+	 * Use https to connect to zip downloader server.
+	 * @default false
+	 */
+	https?: boolean;
+	/**
+	 * Set if zip downloader server's hostname differs from Pretty Index server's `host`.
+	 * @default null
+	 */
+	hostname?: string;
+};
+
 export interface PrettyIndexConfig {
+	/** Root folders with their paths and nginx servers (targets). */
 	root_folders: RootFolder[];
 	/**
 	 * Pretty Index server's port.
@@ -49,4 +74,9 @@ export interface PrettyIndexConfig {
 	 * @default null
 	 */
 	https?: HTTPSOptions;
+	/**
+	 * Standalone server just for downloading folders as ZIP, optional as well.
+	 * @default null
+	 */
+	zip_server?: ZipServer;
 }

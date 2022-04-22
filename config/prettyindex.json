@@ -8,5 +8,9 @@
 	"https": {
 		"cert": "/home/user/keys/cert.pem",
 		"key": "/home/user/keys/key.pem"
+	},
+	"zip_server": {
+		"port": 9080,
+		"https": true
 	}
 }
