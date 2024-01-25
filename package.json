@@ -1,35 +1,35 @@
 {
-  "name": "prettyindex",
-  "version": "1.1.0",
-  "description": "Pretty Autoindex – standalone Node.js addition to refine autoindex pages in nginx.",
-  "main": "prettyindex.js",
-  "module": "prettyindex.js",
-  "type": "module",
-  "scripts": {
-    "production": "pm2 start config/pm2.production.json",
-    "stop": "pm2 delete prettyindex",
-    "dev": "nodemon prettyindex.js --config config/nodemon.dev.json"
-  },
-  "keywords": [
-    "nginx",
-    "autoindex"
-  ],
-  "author": "serguun42",
-  "license": "BSL-1.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/serguun42/prettyindex.git"
-  },
-  "bugs": {
-    "url": "https://github.com/serguun42/prettyindex/issues"
-  },
-  "homepage": "https://github.com/serguun42/prettyindex#readme",
-  "dependencies": {
-    "pm2": "5.2.0"
-  },
-  "devDependencies": {
-    "nodemon": "2.0.15",
-    "prettier": "2.6.2",
-    "typescript": "4.6.3"
-  }
+	"name": "prettyindex",
+	"version": "1.2.0",
+	"description": "Pretty Autoindex – standalone Node.js addition to refine autoindex pages in nginx.",
+	"main": "prettyindex.js",
+	"module": "prettyindex.js",
+	"type": "module",
+	"scripts": {
+		"production": "pm2 start config/pm2.production.json",
+		"stop": "pm2 delete prettyindex",
+		"dev": "nodemon prettyindex.js --config config/nodemon.dev.json"
+	},
+	"keywords": [
+		"nginx",
+		"autoindex"
+	],
+	"author": "serguun42",
+	"license": "BSL-1.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/serguun42/prettyindex.git"
+	},
+	"bugs": {
+		"url": "https://github.com/serguun42/prettyindex/issues"
+	},
+	"homepage": "https://github.com/serguun42/prettyindex#readme",
+	"dependencies": {
+		"pm2": "^5.3.1"
+	},
+	"devDependencies": {
+		"nodemon": "^3.0.3",
+		"prettier": "^3.2.4",
+		"typescript": "^5.3.3"
+	}
 }
