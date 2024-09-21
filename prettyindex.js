@@ -108,22 +108,24 @@ const PrepareError = (error) => PreparePage(
 /**
  * @param {import("./types/prettyindexconfig").RootFolder} rootFolder
  * @param {string[]} pathParts
+ * @param {string} requestedHostname
  * @returns {string}
  */
-const LinkForFile = (rootFolder, pathParts) => new URL(`http${rootFolder.nginx_https ? "s" : ""}://${
-	rootFolder.nginx_hostname
+const LinkForFile = (rootFolder, pathParts, requestedHostname) => new URL(`http${rootFolder.nginx_https ? "s" : ""}://${
+	rootFolder.nginx_hostname || requestedHostname
 }:${rootFolder.nginx_port}/${pathParts.join("/")}`).href;
 
 /**
  * @param {import("./types/prettyindexconfig").RootFolder} rootFolder
  * @param {string[]} pathParts
+ * @param {string} requestedHostname
  * @returns {string}
  */
-const LinkForZip = (rootFolder, pathParts) => {
+const LinkForZip = (rootFolder, pathParts, requestedHostname) => {
 	if (!config.zip_server) return "";
 
 	return new URL(`http${config.zip_server?.https ? "s" : ""}://${
-		config.zip_server?.hostname
+		config.zip_server?.hostname || requestedHostname
 	}:${config.zip_server?.port}/?path=${join(rootFolder.path, ...pathParts)}`).href;
 };
 
@@ -141,9 +143,10 @@ const HumanReadableSize = (bytes) => {
 /**
  * @param {import("./types/prettyindexconfig").RootFolder} rootFolder
  * @param {string[]} pathParts
+ * @param {string} requestedHostname
  * @returns {Promise<string>}
  */
-async function BuildPage(rootFolder, pathParts) {
+async function BuildPage(rootFolder, pathParts, requestedHostname) {
 	if (!rootFolder) return PrepareError(`No such root folder`);
 
 	const title = rootFolder.alias || rootFolder.path;
@@ -168,7 +171,7 @@ async function BuildPage(rootFolder, pathParts) {
 	.then((fileOrDirectoryStats) => {
 		if (fileOrDirectoryStats.isFile())
 			return PreparePage(`<script>window.location.assign("${
-				LinkForFile(rootFolder, pathParts)
+				LinkForFile(rootFolder, pathParts, requestedHostname)
 			}")</script>`, title);
 
 		if (fileOrDirectoryStats.isDirectory())
@@ -182,15 +185,15 @@ async function BuildPage(rootFolder, pathParts) {
 							`/${
 								encodeURIComponent(rootFolder.alias || rootFolder.path)
 							}/${[...pathParts, filename].join("/")}` :
-							LinkForFile(rootFolder, [...pathParts, filename])),
-					zip: LinkForZip(rootFolder, [...pathParts, filename]),
+							LinkForFile(rootFolder, [...pathParts, filename], requestedHostname)),
+					zip: LinkForZip(rootFolder, [...pathParts, filename], requestedHostname),
 					size: HumanReadableSize(fileStats.size || 0),
 					isDirectory: fileStats.isDirectory(),
 				}))
 				.catch(() => Promise.resolve({
 					filename,
-					link: LinkForFile(rootFolder, [...pathParts, filename]),
-					zip: LinkForZip(rootFolder, [...pathParts, filename]),
+					link: LinkForFile(rootFolder, [...pathParts, filename], requestedHostname),
+					zip: LinkForZip(rootFolder, [...pathParts, filename], requestedHostname),
 					size: "",
 					isDirectory: false,
 				}))
@@ -262,14 +265,8 @@ async function ServerHandle(req, res) {
 		""
 	);
 
-	if (rootFolder && !rootFolder?.nginx_hostname && requestedHostname)
-		rootFolder.nginx_hostname = requestedHostname;
 
-	if (config.zip_server && !config.zip_server.hostname)
-		config.zip_server.hostname = requestedHostname;
-
-
-	const builtPage = await BuildPage(rootFolder, pathParts.slice(1))
+	const builtPage = await BuildPage(rootFolder, pathParts.slice(1), requestedHostname)
 	.catch((e) => {
 		if (process.env.NODE_ENV === "development") console.warn(e);
 		return PrepareError(e);
